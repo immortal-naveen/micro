@@ -85,6 +85,7 @@
             <div class="post-actions">
                 <button onclick="likePost(this)">Like (${likes})</button>
                 <button onclick="sharePost('${content}', this)">Share (${shares})</button>
+                <button onclick="removePost(this)">Remove</button>
                 <input type="text" placeholder="Add a comment" onkeypress="if(event.key === 'Enter'){ addComment(this, '${username}'); }">
             </div>
             <div class="comments"></div>
@@ -95,6 +96,22 @@
         });
 
         postsContainer.prepend(post);
+    }
+
+    function removePost(button) {
+        const postElement = button.closest('.post');
+        const postElements = Array.from(postsContainer.children);
+        const index = postElements.indexOf(postElement);
+
+        if (index !== -1) {
+            // Remove post from DOM
+            postsContainer.removeChild(postElement);
+
+            // Remove post from localStorage
+            const posts = JSON.parse(localStorage.getItem('posts'));
+            posts.splice(index, 1);
+            localStorage.setItem('posts', JSON.stringify(posts));
+        }
     }
 
     function likePost(button) {
