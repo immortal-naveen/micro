@@ -41,26 +41,31 @@
 <script>
     const postsContainer = document.getElementById('posts-container');
 
+    function loadPosts() {
+        const posts = JSON.parse(localStorage.getItem('posts')) || [];
+        posts.forEach(post => {
+            displayPost(post.username, post.content, post.likes, post.shares, post.comments);
+        });
+    }
+
     function createPost() {
         const username = document.getElementById('username').value;
         const content = document.getElementById('content').value;
 
         if (username && content) {
-            const post = document.createElement('div');
-            post.className = 'post';
+            const post = {
+                username,
+                content,
+                likes: 0,
+                shares: 0,
+                comments: []
+            };
 
-            post.innerHTML = `
-                <strong>${username}</strong>
-                <p>${content}</p>
-                <div class="post-actions">
-                    <button onclick="likePost(this)">Like (0)</button>
-                    <button onclick="sharePost('${content}')">Share</button>
-                    <input type="text" placeholder="Add a comment" onkeypress="if(event.key === 'Enter'){ addComment(this, '${username}'); }">
-                </div>
-                <div class="comments"></div>
-            `;
+            displayPost(username, content, post.likes, post.shares, post.comments);
 
-            postsContainer.prepend(post);
+            const posts = JSON.parse(localStorage.getItem('posts')) || [];
+            posts.push(post);
+            localStorage.setItem('posts', JSON.stringify(posts));
 
             // Clear input fields
             document.getElementById('username').value = '';
@@ -70,27 +75,92 @@
         }
     }
 
+    function displayPost(username, content, likes, shares, comments) {
+        const post = document.createElement('div');
+        post.className = 'post';
+
+        post.innerHTML = `
+            <strong>${username}</strong>
+            <p>${content}</p>
+            <div class="post-actions">
+                <button onclick="likePost(this)">Like (${likes})</button>
+                <button onclick="sharePost('${content}', this)">Share (${shares})</button>
+                <input type="text" placeholder="Add a comment" onkeypress="if(event.key === 'Enter'){ addComment(this, '${username}'); }">
+            </div>
+            <div class="comments"></div>
+        `;
+
+        comments.forEach(comment => {
+            addCommentToPost(post.querySelector('.comments'), comment.username, comment.text);
+        });
+
+        postsContainer.prepend(post);
+    }
+
     function likePost(button) {
         const likesText = button.innerHTML.match(/(\d+)/)[0];
         const newLikes = parseInt(likesText) + 1;
         button.innerHTML = `Like (${newLikes})`;
+
+        // Update likes in localStorage
+        updatePostData(button, newLikes, 'likes');
     }
 
-    function sharePost(content) {
+    function sharePost(content, button) {
+        const sharesText = button.innerHTML.match(/(\d+)/)[0];
+        const newShares = parseInt(sharesText) + 1;
+        button.innerHTML = `Share (${newShares})`;
+
+        // Update shares in localStorage
+        updatePostData(button, newShares, 'shares');
+
         alert(`Check out this post: ${content}`);
+    }
+
+    function updatePostData(button, newValue, type) {
+        const postElements = Array.from(postsContainer.children);
+        const index = postElements.indexOf(button.closest('.post'));
+        const posts = JSON.parse(localStorage.getItem('posts'));
+
+        if (index !== -1) {
+            if (type === 'likes') {
+                posts[index].likes = newValue;
+            } else if (type === 'shares') {
+                posts[index].shares = newValue;
+            }
+            localStorage.setItem('posts', JSON.stringify(posts));
+        }
     }
 
     function addComment(input, username) {
         const commentText = input.value;
         if (commentText) {
-            const commentDiv = document.createElement('div');
-            commentDiv.className = 'comment';
-            commentDiv.innerHTML = `<strong>${username}</strong>: ${commentText}`;
+            const comment = { username, text: commentText };
+            const postElement = input.closest('.post');
+            const commentsDiv = postElement.querySelector('.comments');
 
-            input.parentElement.nextElementSibling.appendChild(commentDiv);
+            addCommentToPost(commentsDiv, username, commentText);
+
+            // Update comments in localStorage
+            const posts = JSON.parse(localStorage.getItem('posts'));
+            const index = Array.from(postsContainer.children).indexOf(postElement);
+            posts[index].comments.push(comment);
+            localStorage.setItem('posts', JSON.stringify(posts));
+
             input.value = ''; // Clear the input
         }
     }
+
+    function addCommentToPost(commentsDiv, username, commentText) {
+        const commentDiv = document.createElement('div');
+        commentDiv.className = 'comment';
+        commentDiv.innerHTML = `<strong>${username}</strong>: ${commentText}`;
+        commentsDiv.appendChild(commentDiv);
+    }
+
+    // Load posts when the page is loaded
+    window.onload = loadPosts;
+
 </script>
 
 </body>
