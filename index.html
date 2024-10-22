@@ -3,48 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Microblog</title>
+    <title>Microblog - Login/Register</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f4f4f4;
+            margin: 0;
+            background: linear-gradient(135deg, #73a5ff, #3f3cbb); /* Gradient background */
+            color: white; /* White text for contrast */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
         }
-        .post {
-            background: white;
-            border: 1px solid #ccc;
+        .container {
+            background: rgba(255, 255, 255, 0.1); /* Semi-transparent background */
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            width: 300px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        h2 {
+            color: #fff; /* Heading color */
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: none;
             border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 15px;
         }
-        .post-actions {
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .hidden {
+            display: none;
+        }
+        .message {
+            color: red;
             margin-top: 10px;
         }
+        .post {
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.2); /* Light semi-transparent background for posts */
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
         .comment {
-            margin-top: 5px;
-            padding: 5px;
+            margin-left: 20px;
             border-left: 2px solid #007BFF;
+            padding-left: 10px;
+            margin-top: 5px;
+        }
+        .emoji-buttons {
+            display: flex;
+            gap: 10px;
         }
     </style>
 </head>
 <body>
 
-<h1>Microblog</h1>
+<div class="container" id="registration-container">
+    <h2>Register</h2>
+    <input type="text" id="reg-username" placeholder="Username">
+    <input type="password" id="reg-password" placeholder="Password">
+    <button onclick="register()">Register</button>
+    <p id="reg-message" class="message hidden"></p>
+</div>
 
-<div id="posts-container"></div>
+<div class="container hidden" id="login-container">
+    <h2>Login</h2>
+    <input type="text" id="login-username" placeholder="Username">
+    <input type="password" id="login-password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p id="login-message" class="message hidden"></p>
+</div>
 
-<h2>Create a Post</h2>
-<input type="text" id="username" placeholder="Your Username">
-<textarea id="content" placeholder="What's on your mind?" rows="4" style="width: 100%;"></textarea>
-<button onclick="createPost()">Post</button>
+<div class="container hidden" id="posts-container">
+    <h1>Microblog</h1>
+    <h2>Create a Post</h2>
+    <input type="text" id="username" placeholder="Your Username">
+    <textarea id="content" placeholder="What's on your mind?" rows="4"></textarea>
+    <button id="post-button" onclick="createPost()">Post</button>
+</div>
 
 <script>
-    const postsContainer = document.getElementById('posts-container');
+    function register() {
+        const username = document.getElementById('reg-username').value;
+        const password = document.getElementById('reg-password').value;
+        const message = document.getElementById('reg-message');
+
+        if (username && password) {
+            let users = JSON.parse(localStorage.getItem('users')) || [];
+
+            if (users.find(user => user.username === username)) {
+                message.textContent = 'Username already exists.';
+                message.classList.remove('hidden');
+            } else {
+                users.push({ username, password });
+                localStorage.setItem('users', JSON.stringify(users));
+                message.textContent = 'Registration successful! Please log in.';
+                message.classList.remove('hidden');
+                document.getElementById('registration-container').classList.add('hidden');
+                document.getElementById('login-container').classList.remove('hidden');
+            }
+        } else {
+            message.textContent = 'Please enter both username and password.';
+            message.classList.remove('hidden');
+        }
+    }
+
+    function login() {
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        const message = document.getElementById('login-message');
+
+        let users = JSON.parse(localStorage.getItem('users')) || [];
+        const user = users.find(user => user.username === username && user.password === password);
+
+        if (user) {
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('posts-container').classList.remove('hidden');
+            document.getElementById('username').value = username; // Pre-fill the username for posting
+            loadPosts();
+        } else {
+            message.textContent = 'Invalid username or password.';
+            message.classList.remove('hidden');
+        }
+    }
 
     function loadPosts() {
+        const postsContainer = document.getElementById('posts-container');
         const posts = JSON.parse(localStorage.getItem('posts')) || [];
+        postsContainer.innerHTML += '<h1>Posts</h1>'; // Add header for posts
         posts.forEach(post => {
-            displayPost(post.username, post.content, post.likes, post.shares, post.comments);
+            displayPost(post);
         });
     }
 
@@ -53,117 +158,65 @@
         const content = document.getElementById('content').value;
 
         if (username && content) {
-            const post = {
-                username,
-                content,
-                likes: 0,
-                shares: 0,
-                comments: []
-            };
-
-            displayPost(username, content, post.likes, post.shares, post.comments);
-
+            const post = { username, content, comments: [], emojiReactions: {} };
             const posts = JSON.parse(localStorage.getItem('posts')) || [];
             posts.push(post);
             localStorage.setItem('posts', JSON.stringify(posts));
 
-            // Clear input fields
-            document.getElementById('username').value = '';
-            document.getElementById('content').value = '';
+            displayPost(post);
+            document.getElementById('content').value = ''; // Clear content input
         } else {
-            alert('Please enter a username and content.');
+            alert('Please enter both username and content for the post.');
         }
     }
 
-    function displayPost(username, content, likes, shares, comments) {
-        const post = document.createElement('div');
-        post.className = 'post';
-
-        post.innerHTML = `
-            <strong>${username}</strong>
-            <p>${content}</p>
-            <div class="post-actions">
-                <button onclick="likePost(this)">Like (${likes})</button>
-                <button onclick="sharePost('${content}', this)">Share (${shares})</button>
-                <button onclick="removePost(this)">Remove</button>
-                <input type="text" placeholder="Add a comment" onkeypress="if(event.key === 'Enter'){ addComment(this, '${username}'); }">
+    function displayPost(post) {
+        const postsContainer = document.getElementById('posts-container');
+        const postDiv = document.createElement('div');
+        postDiv.className = 'post';
+        postDiv.innerHTML = `
+            <strong>${post.username}</strong>: ${post.content}
+            <div class="emoji-buttons">
+                <button onclick="addReaction('${post.username}', '👍')">👍</button>
+                <button onclick="addReaction('${post.username}', '❤️')">❤️</button>
+                <button onclick="addReaction('${post.username}', '😂')">😂</button>
             </div>
+            <p id="reaction-${post.username}" class="reaction-count"></p>
+            <input type="text" placeholder="Add a comment" onkeypress="if(event.key === 'Enter'){ addComment(this, '${post.username}'); }">
             <div class="comments"></div>
         `;
 
-        comments.forEach(comment => {
-            addCommentToPost(post.querySelector('.comments'), comment.username, comment.text);
+        post.comments.forEach(comment => {
+            addCommentToPost(postDiv.querySelector('.comments'), comment.username, comment.text);
         });
 
-        postsContainer.prepend(post);
+        postsContainer.appendChild(postDiv);
     }
 
-    function removePost(button) {
-        const postElement = button.closest('.post');
-        const postElements = Array.from(postsContainer.children);
-        const index = postElements.indexOf(postElement);
-
-        if (index !== -1) {
-            // Remove post from DOM
-            postsContainer.removeChild(postElement);
-
-            // Remove post from localStorage
-            const posts = JSON.parse(localStorage.getItem('posts'));
-            posts.splice(index, 1);
-            localStorage.setItem('posts', JSON.stringify(posts));
-        }
-    }
-
-    function likePost(button) {
-        const likesText = button.innerHTML.match(/(\d+)/)[0];
-        const newLikes = parseInt(likesText) + 1;
-        button.innerHTML = `Like (${newLikes})`;
-
-        // Update likes in localStorage
-        updatePostData(button, newLikes, 'likes');
-    }
-
-    function sharePost(content, button) {
-        const sharesText = button.innerHTML.match(/(\d+)/)[0];
-        const newShares = parseInt(sharesText) + 1;
-        button.innerHTML = `Share (${newShares})`;
-
-        // Update shares in localStorage
-        updatePostData(button, newShares, 'shares');
-
-        alert(`Check out this post: ${content}`);
-    }
-
-    function updatePostData(button, newValue, type) {
-        const postElements = Array.from(postsContainer.children);
-        const index = postElements.indexOf(button.closest('.post'));
+    function addReaction(username, emoji) {
         const posts = JSON.parse(localStorage.getItem('posts'));
-
-        if (index !== -1) {
-            if (type === 'likes') {
-                posts[index].likes = newValue;
-            } else if (type === 'shares') {
-                posts[index].shares = newValue;
-            }
-            localStorage.setItem('posts', JSON.stringify(posts));
+        const post = posts.find(p => p.username === username);
+        if (!post.emojiReactions[emoji]) {
+            post.emojiReactions[emoji] = 0;
         }
+        post.emojiReactions[emoji]++;
+        localStorage.setItem('posts', JSON.stringify(posts));
+
+        document.getElementById(`reaction-${username}`).innerText = 
+            Object.entries(post.emojiReactions).map(([key, value]) => `${key}: ${value}`).join(' ');
     }
 
     function addComment(input, username) {
         const commentText = input.value;
         if (commentText) {
             const comment = { username, text: commentText };
-            const postElement = input.closest('.post');
-            const commentsDiv = postElement.querySelector('.comments');
-
-            addCommentToPost(commentsDiv, username, commentText);
-
-            // Update comments in localStorage
             const posts = JSON.parse(localStorage.getItem('posts'));
-            const index = Array.from(postsContainer.children).indexOf(postElement);
-            posts[index].comments.push(comment);
+            const post = posts.find(p => p.username === username);
+            post.comments.push(comment);
             localStorage.setItem('posts', JSON.stringify(posts));
 
+            const postElement = input.closest('.post');
+            addCommentToPost(postElement.querySelector('.comments'), username, commentText);
             input.value = ''; // Clear the input
         }
     }
@@ -174,10 +227,6 @@
         commentDiv.innerHTML = `<strong>${username}</strong>: ${commentText}`;
         commentsDiv.appendChild(commentDiv);
     }
-
-    // Load posts when the page is loaded
-    window.onload = loadPosts;
-
 </script>
 
 </body>
